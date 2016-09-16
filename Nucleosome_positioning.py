@@ -1,4 +1,4 @@
-# Nucleosome_positioning By Sangwoo Park, 2016
+# Nucleosome_positioning By Sangwoo Park, September 2016
 # Calculate probability of nucleosome positioning on given DNA sequence
 # Yeast genome data Based on Pubmed, Saccharomyces cerevisiae S288c (assembly R64)
 # Positioning data Based on Kristin, et al, Nature 2012
