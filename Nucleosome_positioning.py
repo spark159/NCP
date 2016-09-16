@@ -4,7 +4,7 @@
 # Positioning data Based on Kristin, et al, Nature 2012
 # Algorithm Based on Segal, et al, Nature 2006
 
-import numpy as np
+export numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from Bio import SeqIO
