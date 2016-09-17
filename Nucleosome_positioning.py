@@ -11,7 +11,7 @@ from Bio import SeqIO
 
 # read out yeast genome data
 ygenome={}
-handle = open("GCF_000146045.2_R64_genomic.fna", "rU")
+handle = open("data/scerevisiae.fa", "rU")
 for record in SeqIO.parse(handle, "fasta"):
     if len(record.description.split()) == 8:
         key="chr"+record.description.split()[5].strip(',')
@@ -36,7 +36,7 @@ def get_comp (seq):
 
 # read out nucleosome positioning & sequence data
 NCP_pos=[]; NCP_seq=[]
-f=open("nature2012.txt")
+f=open("data/nature11142-s2.txt")
 for line in f:
     if len(line.split()) ==4:
         NCP_pos.append(line.split())
