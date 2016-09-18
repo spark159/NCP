@@ -155,3 +155,4 @@ plt.figure(); plt.plot(newAfreq)
 #occupancy=NCPoccupancy (profile)
 #plt.figure(); plt.plot(profile)
 #plt.figure(); plt.plot(occupancy)
+djfklsdfjl
