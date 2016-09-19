@@ -7,18 +7,18 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-from Bio import SeqIO
 
 # read out yeast genome data
 ygenome={}
-handle = open("data/scerevisiae.fa", "rU")
-for record in SeqIO.parse(handle, "fasta"):
-    if len(record.description.split()) == 8:
-        key="chr"+record.description.split()[5].strip(',')
-        ygenome[key]=str(record.seq).upper()
+f = open("data/scerevisiae.fa", "rU")
+for line in f:
+    if '>' in line:
+        key=line.strip('>').strip('\n')
+        s=''
     else:
-        ygenome["chrmt"]=str(record.seq)
-handle.close()
+        s += line.rstrip()
+        ygenome[key] = s
+f.close()
 
 # get complementary sequence 
 def get_comp (seq):
@@ -47,6 +47,7 @@ for i in range(len(NCP_pos)):
     if q > 0 and st >=0 and en <= len(ygenome[key])-1:
         seq=ygenome[key][st:en+1]; #rev_comp_seq=get_comp(seq)[::-1]
         NCP_seq.append(seq); #NCP_seq.append(rev_comp_seq)
+f.close()
 
 # dinucleotide step analysis (A vs. G)
 def AG_freq (NCP_seq):
@@ -149,10 +150,11 @@ def NCPoccupancy (profile):
 #freq=din_freq(NCP_seq)
 #newAfreq=freq['AA']+freq['AT']+freq['TA']+freq['TT']
 [Afreq,Gfreq]=AG_freq (NCP_seq)
-plt.figure(); plt.plot(Afreq);
-plt.figure(); plt.plot(newAfreq)
+#print Afreq
+plt.figure(); plt.plot(Afreq); plt.show()
+#plt.figure(); plt.plot(Gfreq)
 #profile=NCPprob_profile (ygenome["chrII"])
 #occupancy=NCPoccupancy (profile)
 #plt.figure(); plt.plot(profile)
 #plt.figure(); plt.plot(occupancy)
-djfklsdfjl
+#print ygenome['chrI']
