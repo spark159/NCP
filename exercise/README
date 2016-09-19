@@ -1,1 +1,6 @@
-gcc -o hello hello.c
+To compile hello.c:
+   gcc -o hello hello.c
+
+To execute hello:
+   ./hello
+
