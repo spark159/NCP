@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Nucleosome_positioning By Sangwoo Park and Daehwan Kim, September 2016
+# Nucleosome_positioning by Sangwoo Park and Daehwan Kim, September 2016
 # Calculate probability of nucleosome positioning on given DNA sequence
 # Yeast genome data Based on Pubmed, Saccharomyces cerevisiae (UCSC -SAC2)
 #    http://hgdownload.soe.ucsc.edu/goldenPath/sacCer2/bigZips/
@@ -174,20 +174,26 @@ def NCP(nucleosome_dna_len,
     
     NCP_list = read_NCP_list("data/nature11142-s2.txt")
 
+    def read_NCP_sequence(genome, NCP):
+        chr, pos, score = NCP
+        st = pos - nucleosome_dna_len / 2; en = pos + nucleosome_dna_len / 2
+        if st < 0 or en >= len(genome[chr]):
+            return ""
+        seq = genome[chr][st:en+1]; #rev_comp_seq=get_comp(seq)[::-1]
+        return seq
+            
     def read_NCP_sequences(genome, NCP_list):
         NCP_seq_list = []
         for NCP in NCP_list:
-            chr, pos, score = NCP
-            st = pos - nucleosome_dna_len / 2; en = pos + nucleosome_dna_len / 2
-            if st < 0 or en >= len(ygenome[chr]):
+            seq = read_NCP_sequence(genome, NCP)
+            if seq == "":
                 continue
-            seq = genome[chr][st:en+1]; #rev_comp_seq=get_comp(seq)[::-1]
-            NCP_seq_list.append(seq); #NCP_seq.append(rev_comp_seq)
+            NCP_seq_list.append(seq);
         return NCP_seq_list
 
     NCP_seq_list = read_NCP_sequences(ygenome, NCP_list)
 
-    # Randomly select 80% of NCPs as a training set and the rest, 20%, as a validation set
+    # Randomly select 99% of NCPs as a training set and the rest, 1%, as a validation set
     NCP_random_list = NCP_list[:] # deep copy
     random.shuffle(NCP_random_list)
     num99 = len(NCP_random_list) * 99 / 100
@@ -195,15 +201,16 @@ def NCP(nucleosome_dna_len,
     NCP_seq_tlist, NCP_seq_vlist = read_NCP_sequences(ygenome, NCP_tlist), read_NCP_sequences(ygenome, NCP_vlist)
 
     mm = HMM.MarkovModel(markov_order)
-    mm.train(NCP_seq_tlist)
+    mm.train(ygenome, NCP_seq_tlist)
     num_test, num_correct = 0, 0
     for NCP in NCP_vlist:
         chr, pos = NCP[:2]
         max_i, max_score = -1, -sys.float_info.max
         for i in range(max(nucleosome_dna_len / 2, pos - 50), pos + 50):
-            st = i - nucleosome_dna_len / 2; en = i + nucleosome_dna_len / 2
-            seq = ygenome[chr][st:en+1];
+            seq = read_NCP_sequence(ygenome, [chr, i, 0.0])
             cur_score = mm.predict(seq)
+            # comp_seq = get_comp(seq)
+            # cur_score = max(mm.predict(seq), mm.predict(comp_seq))
             if max_score < cur_score:
                 max_i = i
                 max_score = cur_score
@@ -211,6 +218,20 @@ def NCP(nucleosome_dna_len,
         num_test += 1
         if pos == max_i:
             num_correct += 1
+
+        # DK - for debugging purposes
+        """
+        if pos != max_i:
+            print NCP
+            print "predicted: %d, score: %f" % (max_i, max_score)
+            print "true: %d, score: %f" % (pos, mm.predict(read_NCP_sequence(ygenome, [chr, pos, 0.0])))
+            for i in range(max(nucleosome_dna_len / 2, pos - 50), pos + 50):
+                seq = read_NCP_sequence(ygenome, [chr, i, 0.0])
+                cur_score = mm.predict(seq)
+                print "\t%f at %d" % (cur_score, i)
+        
+            sys.exit(1)
+        """
             
     print "%d-order Markov Model: %.2f%% (%d/%d)" % (markov_order, float(num_correct)/num_test*100, num_correct, num_test)
     # mm.help()
