@@ -2,7 +2,8 @@
 
 # Nucleosome_positioning By Sangwoo Park and Daehwan Kim, September 2016
 # Calculate probability of nucleosome positioning on given DNA sequence
-# Yeast genome data Based on Pubmed, Saccharomyces cerevisiae S288c (assembly R64)
+# Yeast genome data Based on Pubmed, Saccharomyces cerevisiae (UCSC -SAC2)
+#    http://hgdownload.soe.ucsc.edu/goldenPath/sacCer2/bigZips/
 # Positioning data Based on Kristin, et al, Nature 2012
 # Algorithm Based on Segal, et al, Nature 2006
 
@@ -12,8 +13,11 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 
+# Import some of our own modules
+from models import HMM
 
 # read out yeast genome data
+# output is a dictionary, e.g., {"chrI": ACCATG, "chrII": TGCTT}
 def read_genome(fname):
     genome = {}
     for line in open(fname, "rU"):
@@ -25,7 +29,8 @@ def read_genome(fname):
             genome[key] = s
     return genome
 
-# get complementary sequence 
+# get complementary sequence
+# e.g., ACG => CGT
 def get_comp (seq):
     rev_seq=seq[::-1]; new_seq=''
     for base in rev_seq:
@@ -46,10 +51,11 @@ def AG_freq (NCP_seq_list, nucleosome_dna_len):
         for i in range(len(seq)-1):
             dint = seq[i:i+2]
             if dint in ['AA','AT','TA','TT']:
-                Afreq[i] += 1.0/len(NCP_seq_list)
+                Afreq[i] += 1.0
             elif dint in ['CC','CG','GC','GG']:
-                Gfreq[i] += 1.0/len(NCP_seq_list)
-    return Afreq, Gfreq
+                Gfreq[i] += 1.0
+                
+    return Afreq / len(NCP_seq_list), Gfreq / len(NCP_seq_list)
 
 # dinucleotide step analysis (full)
 def din_freq (NCP_seq_list, nucleosome_dna_len):
@@ -142,6 +148,11 @@ def NCPoccupancy (profile, nucleosome_dna_len):
 
 def NCP(nucleosome_dna_len,
         verbose):
+
+    # DK - for debugging purposes
+    print HMM.DK_test
+    sys.exit(1)
+    
     # read out yeast genome data
     ygenome = read_genome("data/scerevisiae.fa")
 
