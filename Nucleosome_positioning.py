@@ -8,6 +8,7 @@
 # Algorithm Based on Segal, et al, Nature 2006
 
 import sys, os
+import random
 from argparse import ArgumentParser, FileType
 import numpy as np
 import matplotlib
@@ -19,15 +20,19 @@ from models import HMM
 # read out yeast genome data
 # output is a dictionary, e.g., {"chrI": ACCATG, "chrII": TGCTT}
 def read_genome(fname):
-    genome = {}
-    for line in open(fname, "rU"):
-        if '>' in line:
-            key=line.strip('>').strip('\n')
-            s=''
+    chr_dic = {}
+    chr_name, sequence = "", ""
+    for line in open(fname):
+        if line.startswith(">"):
+            if chr_name and sequence:
+                chr_dic[chr_name] = sequence
+            chr_name = line.strip().split()[0][1:]
+            sequence = ""
         else:
-            s += line.rstrip()
-            genome[key] = s
-    return genome
+            sequence += line.strip()
+    if chr_name and sequence:
+        chr_dic[chr_name] = sequence
+    return chr_dic
 
 # get complementary sequence
 # e.g., ACG => CGT
@@ -147,35 +152,70 @@ def NCPoccupancy (profile, nucleosome_dna_len):
 
 
 def NCP(nucleosome_dna_len,
+        markov_order,
         verbose):
-
-    # DK - for debugging purposes
-    print HMM.DK_test
-    sys.exit(1)
-    
     # read out yeast genome data
     ygenome = read_genome("data/scerevisiae.fa")
 
     # read out nucleosome positioning & sequence data
-    NCP_list, NCP_seq_list = [], []
-    for line in open("data/nature11142-s2.txt"):
-        line = line.strip()
-        try:
-            chr, pos, score, noise= line.split()
-            pos, score, noise = int(pos) - 1, float(score), float(noise)
-            if noise <= 0.0:
+    def read_NCP_list(NCP_fname):
+        NCP_list = []
+        for line in open(NCP_fname):
+            line = line.strip()
+            try:
+                chr, pos, score, noise= line.split()
+                pos, score, noise = int(pos) - 1, float(score), float(noise)
+                if noise <= 0.0:
+                    continue
+                NCP_list.append([chr, pos, score / noise])
+            except ValueError:
                 continue
-            NCP_list.append([chr, pos, score / noise])
-        except ValueError:
-            continue
+        return NCP_list
+    
+    NCP_list = read_NCP_list("data/nature11142-s2.txt")
 
-    for NCP in NCP_list:
-        chr, pos, score = NCP
-        st = pos - nucleosome_dna_len / 2; en = pos + nucleosome_dna_len / 2
-        if st < 0 or en >= len(ygenome[chr]):
-            continue
-        seq = ygenome[chr][st:en+1]; #rev_comp_seq=get_comp(seq)[::-1]
-        NCP_seq_list.append(seq); #NCP_seq.append(rev_comp_seq)
+    def read_NCP_sequences(genome, NCP_list):
+        NCP_seq_list = []
+        for NCP in NCP_list:
+            chr, pos, score = NCP
+            st = pos - nucleosome_dna_len / 2; en = pos + nucleosome_dna_len / 2
+            if st < 0 or en >= len(ygenome[chr]):
+                continue
+            seq = genome[chr][st:en+1]; #rev_comp_seq=get_comp(seq)[::-1]
+            NCP_seq_list.append(seq); #NCP_seq.append(rev_comp_seq)
+        return NCP_seq_list
+
+    NCP_seq_list = read_NCP_sequences(ygenome, NCP_list)
+
+    # Randomly select 80% of NCPs as a training set and the rest, 20%, as a validation set
+    NCP_random_list = NCP_list[:] # deep copy
+    random.shuffle(NCP_random_list)
+    num99 = len(NCP_random_list) * 99 / 100
+    NCP_tlist, NCP_vlist = NCP_random_list[:num99], NCP_random_list[num99:]
+    NCP_seq_tlist, NCP_seq_vlist = read_NCP_sequences(ygenome, NCP_tlist), read_NCP_sequences(ygenome, NCP_vlist)
+
+    mm = HMM.MarkovModel(markov_order)
+    mm.train(NCP_seq_tlist)
+    num_test, num_correct = 0, 0
+    for NCP in NCP_vlist:
+        chr, pos = NCP[:2]
+        max_i, max_score = -1, -sys.float_info.max
+        for i in range(max(nucleosome_dna_len / 2, pos - 50), pos + 50):
+            st = i - nucleosome_dna_len / 2; en = i + nucleosome_dna_len / 2
+            seq = ygenome[chr][st:en+1];
+            cur_score = mm.predict(seq)
+            if max_score < cur_score:
+                max_i = i
+                max_score = cur_score
+
+        num_test += 1
+        if pos == max_i:
+            num_correct += 1
+            
+    print "%d-order Markov Model: %.2f%% (%d/%d)" % (markov_order, float(num_correct)/num_test*100, num_correct, num_test)
+    # mm.help()
+    sys.exit(1)
+    
 
     tm = get_NCP_m(NCP_seq_list, nucleosome_dna_len)
 
@@ -200,6 +240,16 @@ if __name__ == '__main__':
                         type=int,
                         default=147,
                         help='Flanking sequence length (both sides including the center, default: 147')
+    parser.add_argument('--markov-order',
+                        dest='markov_order',
+                        type=int,
+                        default=1,
+                        help='Markov Model order (default: 1)')    
+    parser.add_argument('--seed',
+                        dest='seed',
+                        type=int,
+                        default=1,
+                        help='Random seeding value (default: 1)')
     parser.add_argument('-v', '--verbose',
                         dest='verbose',
                         action='store_true',
@@ -210,5 +260,8 @@ if __name__ == '__main__':
         print >> sys.stderr, "Error: please use an odd number for --nucleosome-dna-len, perhaps %d instead of %d" % (args.nucleosome_dna_len + 1, args.nucleosome_dna_len)
         sys.exit(1)
 
+    random.seed(args.seed)
+
     NCP(args.nucleosome_dna_len,
+        args.markov_order,
         args.verbose)
