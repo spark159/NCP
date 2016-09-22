@@ -2,6 +2,7 @@
 
 import sys
 import math
+import numpy as np
 
 class MarkovModel:
     def __init__(self, order):
@@ -64,7 +65,7 @@ class MarkovModel:
                     prob_pos[prev_cur] = math.log(count / total_count)
 
     # Calculate log-probability of a given sequence
-    def predict(self, seq):
+    def predict(self, seq, background = True):
         if self.seq_len != len(seq):
             return
 
@@ -81,12 +82,46 @@ class MarkovModel:
                 score = (-sys.float_info.max / 2)
             else:
                 score += self.prob[order][i][prev_cur]
-            if prev_cur not in self.bg_prob[order]:
-                score = (-sys.float_info.max / 2)
-            else:
-                score += -self.bg_prob[order][prev_cur]
+
+            if background:
+                if prev_cur not in self.bg_prob[order]:
+                    score = (-sys.float_info.max / 2)
+                else:
+                    score += -self.bg_prob[order][prev_cur]
                 
         return score
+
+    # Calculate the sum of weight-factor of given sub sequence (forward)
+    def get_forward(self, seq):
+        N = len(seq)
+        F = [1.0] * (N + 1)
+        for i in range(N):
+            bp = seq[i]
+            bg_prob = math.exp(self.bg_prob[0][bp])
+            F[i+1] = F[i] * bg_prob
+            if i >= self.seq_len:
+                F[i+1] += F[i+1-self.seq_len] * math.exp(self.predict(seq[i-self.seq_len+1:i+1], False))
+        return F
+
+    # Calculate the sum of weight-factor of given sub sequence (reverse)
+    def get_reverse(self, seq):
+        N = len(seq)
+        R = [1.0] * (N + 1)
+        for i in reversed(range(N)):
+            bp = seq[i]
+            bg_prob = math.exp(self.bg_prob[0][bp])
+            R[i] = R[i+1] * bg_prob
+            if i + self.seq_len < N:
+                R[i] += R[i + self.seq_len] * math.exp(self.predict(seq[i:i+self.seq_len], False))
+        return R
+
+    # calculate the probabilty of NCP would be on ith position of given sequence
+    def prob_i(self, seq, i, F, R):
+        N = len(seq)
+        i -= (self.seq_len / 2)
+        if i < 0 or i + self.seq_len > N:
+            return 0.0
+        return F[i] * math.exp(self.predict(seq[i:i+self.seq_len], False)) * R[i + self.seq_len] / R[0]
 
     # Display some detail about the model
     def help(self):

@@ -88,42 +88,6 @@ def get_NCP_m (NCP_seq_list, nucleosome_dna_len):
         result.append(matrix)
     return result
 
-# calculate probabilty of NCP positioning on given 147 bp sequence
-def get_NCP_prob(seq, nucleosome_dna_len):
-    if len(seq) != nucleosome_dna_len: return None
-    global tm
-    prob=0.25; dic={'A':0, 'T':1, 'C':2, 'G':3}
-    for i in range(146):
-        n=dic[seq[i]]; m=dic[seq[i+1]]
-        prob *= tm[i][n][m]
-    return prob
-
-# calculate the sum of weight-factor of given sub sequence (forward)
-def get_forward (seq, n, nucleosome_dna_len):
-    F=[1.0]
-    for i in range(1,n+1):
-        if i < nucleosome_dna_len:
-            F.append(F[-1]*1)
-        else:
-            F.append(F[-1]*1 + F[-nucleosome_dna_len]*get_NCP_prob(seq[i-nucleosome_dna_len:(i-1)+1]))
-    return F
-
-# calculate the sum of weight-factor of given sub sequence (reverse)
-def get_reverse (seq, n, nucleosome_dna_len):
-    R=[1.0]; N=len(seq)
-    for i in range(1,n+1):
-        if i < nucleosome_dna_len:
-            R.append(R[-1]*1)
-        else:
-            R.append(R[-1]*1 + R[-nucleosome_dna_len]*get_NCP_prob(seq[N-i:N-i+nucleosome_dna_len]))
-    return R
-
-# calculate the probabilty of NCP would be on i th position of given sequence
-def NCPprob (seq, i, nucleosome_dna_len):
-    if len(seq[i-1:]) < nucleosome_dna_len:
-        return 0.0
-    return (get_forward(seq, i-1)[-1] * get_NCP_prob (seq[i-1:i+nucleosome_dna_len-1]) * get_reverse(seq, len(seq)-(i+nucleosome_dna_len-1))[-1]) / get_reverse(seq, len(seq))[-1]
-
 # get NCP positioning probabiliy profile for a long sequence
 def NCPprob_profile (seq, nucleosome_dna_len):
     F=get_forward(seq, len(seq)); R=get_reverse(seq, len(seq))
@@ -209,6 +173,7 @@ def NCP(nucleosome_dna_len,
         for i in range(max(nucleosome_dna_len / 2, pos - 50), pos + 50):
             seq = read_NCP_sequence(ygenome, [chr, i, 0.0])
             cur_score = mm.predict(seq)
+            
             # comp_seq = get_comp(seq)
             # cur_score = max(mm.predict(seq), mm.predict(comp_seq))
             if max_score < cur_score:
@@ -220,8 +185,7 @@ def NCP(nucleosome_dna_len,
             num_correct += 1
 
         # DK - for debugging purposes
-        """
-        if pos != max_i:
+        if pos != max_i and False:
             print NCP
             print "predicted: %d, score: %f" % (max_i, max_score)
             print "true: %d, score: %f" % (pos, mm.predict(read_NCP_sequence(ygenome, [chr, pos, 0.0])))
@@ -229,9 +193,29 @@ def NCP(nucleosome_dna_len,
                 seq = read_NCP_sequence(ygenome, [chr, i, 0.0])
                 cur_score = mm.predict(seq)
                 print "\t%f at %d" % (cur_score, i)
+
+            chr_seq = ygenome[chr]
+            chr_len = len(chr_seq)
+            left = max(0, pos - 1000)
+            right = min(chr_len, pos + 1000)
+            seq = chr_seq[left:right]
+            F = mm.get_forward(seq)
+            R = mm.get_reverse(seq)
+
+            print F
+            # print R
+
+            max_i, max_score = -1, -sys.float_info.max
+            for i in range(max(nucleosome_dna_len / 2, pos - 50), pos + 50):
+                cur_score = mm.prob_i(seq, i - left, F, R)
+                if max_score < cur_score:
+                    max_i = i
+                    max_score = cur_score
+
+            print "Global: %d, score: %f" % (max_i, max_score)
+
         
             sys.exit(1)
-        """
             
     print "%d-order Markov Model: %.2f%% (%d/%d)" % (markov_order, float(num_correct)/num_test*100, num_correct, num_test)
     # mm.help()
