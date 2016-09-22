@@ -149,12 +149,11 @@ def NCPoccupancy (profile):
 
 #freq=din_freq(NCP_seq)
 #newAfreq=freq['AA']+freq['AT']+freq['TA']+freq['TT']
-[Afreq,Gfreq]=AG_freq (NCP_seq)
+#[Afreq,Gfreq]=AG_freq (NCP_seq)
 #print Afreq
-plt.figure(); plt.plot(Afreq); plt.show()
-#plt.figure(); plt.plot(Gfreq)
-#profile=NCPprob_profile (ygenome["chrII"])
-#occupancy=NCPoccupancy (profile)
-#plt.figure(); plt.plot(profile)
-#plt.figure(); plt.plot(occupancy)
-#print ygenome['chrI']
+#plt.figure(); plt.plot(Afreq); plt.plot(Gfreq); plt.show()
+#plt.figure(); plt.plot(Gfreq); plt.show()
+profile=NCPprob_profile (ygenome["chrII"])
+occupancy=NCPoccupancy (profile)
+#plt.figure(); plt.plot(profile); plt.show()
+plt.figure(); plt.plot(occupancy); plt.show()
