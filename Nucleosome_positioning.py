@@ -8,7 +8,7 @@
 # Algorithm Based on Segal, et al, Nature 2006
 
 import sys, os
-import random
+import random, math
 from argparse import ArgumentParser, FileType
 import numpy as np
 import matplotlib
@@ -117,6 +117,7 @@ def NCPoccupancy (profile, nucleosome_dna_len):
 
 def NCP(nucleosome_dna_len,
         markov_order,
+        background,
         verbose):
     # read out yeast genome data
     ygenome = read_genome("data/scerevisiae.fa")
@@ -172,7 +173,7 @@ def NCP(nucleosome_dna_len,
         max_i, max_score = -1, -sys.float_info.max
         for i in range(max(nucleosome_dna_len / 2, pos - 50), pos + 50):
             seq = read_NCP_sequence(ygenome, [chr, i, 0.0])
-            cur_score = mm.predict(seq)
+            cur_score = mm.predict(seq, background)
             
             # comp_seq = get_comp(seq)
             # cur_score = max(mm.predict(seq), mm.predict(comp_seq))
@@ -196,23 +197,21 @@ def NCP(nucleosome_dna_len,
 
             chr_seq = ygenome[chr]
             chr_len = len(chr_seq)
-            left = max(0, pos - 1000)
-            right = min(chr_len, pos + 1000)
+            left = max(0, pos - 5000)
+            right = min(chr_len, pos + 5000)
             seq = chr_seq[left:right]
             F = mm.get_forward(seq)
             R = mm.get_reverse(seq)
 
-            print F
-            # print R
-
             max_i, max_score = -1, -sys.float_info.max
             for i in range(max(nucleosome_dna_len / 2, pos - 50), pos + 50):
-                cur_score = mm.prob_i(seq, i - left, F, R)
+                cur_score = mm.logprob_i(seq, i - left, F, R)
+                print "genome wide: %f at %d" % (cur_score, i)
                 if max_score < cur_score:
                     max_i = i
                     max_score = cur_score
 
-            print "Global: %d, score: %f" % (max_i, max_score)
+            print "Global: %d, score: %f (%.2f%%)" % (max_i, max_score, math.exp(max_score) * 100)
 
         
             sys.exit(1)
@@ -255,6 +254,10 @@ if __name__ == '__main__':
                         type=int,
                         default=1,
                         help='Random seeding value (default: 1)')
+    parser.add_argument('--no-background',
+                        dest='background',
+                        action='store_false',
+                        help='No background noise for calculating score')
     parser.add_argument('-v', '--verbose',
                         dest='verbose',
                         action='store_true',
@@ -269,4 +272,5 @@ if __name__ == '__main__':
 
     NCP(args.nucleosome_dna_len,
         args.markov_order,
+        args.background,
         args.verbose)
