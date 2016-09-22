@@ -1,0 +1,9 @@
+To install numpy:
+   https://github.com/numpy/numpy/releases/tag/v1.11.1
+   python setup.py build
+   sudo python setup.py build
+
+To install on Mac:
+   sudo easy_install pip
+   sudo pip install matplotlib
+   
