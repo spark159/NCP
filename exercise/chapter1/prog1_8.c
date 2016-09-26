@@ -9,7 +9,7 @@ void main(void) {
   perm(list, 5, 0);
 }
 
-
+ 
 void perm(int list [], int n, int st ){
   if (st == n) {
     count +=1; printf ("#%3d ", count);
