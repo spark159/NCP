@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+import sys
+
 # read overlap information
 def read_input (fname):
     result=[]
