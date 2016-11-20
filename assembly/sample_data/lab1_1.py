@@ -8,7 +8,7 @@ def read_input (filename):
         else:
             seq_reads[key] += line.strip()
     return seq_reads
-seq_reads=read_input("sample.fasta")
+seq_reads=read_input("lab01.fasta")
 
 # make complementary sequence
 def comp_seq (seq):
@@ -22,7 +22,7 @@ def comp_seq (seq):
 def overlap (seq1, seq2):
     N=len(seq1); comp_seq2=comp_seq(seq2)
     num=0; pos='null'; ori='null'
-    for i in range(-(N-40),N+40+1):
+    for i in range(-(N-40),N-40+1):
         st1=max(0,i) ; en1=min(N,N+i)
         st2=max(0,-i); en2=min(N,N-i)
         if seq1[st1:en1] == seq2[st2:en2]:
@@ -45,7 +45,7 @@ def pairwise(seq_reads):
             if I:
                 output += '%03d  %03d  %s  %d  \n' % (i,j,ori,pos)
                 result.append([i,j,ori,pos])
-    f=open('test.olaps','w')
+    f=open('lab01.olaps','w')
     f.write(output)   
     return result
 
