@@ -1,0 +1,15 @@
+
+def open_file (file_name):
+    unis_dic={}
+    for line in open(file_name):
+        linelist=line.strip().split()
+        if linelist[0]=="UNI":
+            uid=int(linelist[1])
+            unis_dic[uid]=[]
+        else:
+            num,ori,pos=linelist
+            unis_dic[uid].append([int(num),ori,int(pos)])
+    return unis_dic
+
+unis_dic=open_file("sample.unis")
+print unis_dic

@@ -260,7 +260,7 @@ def printout (unis_list):
         output=output.replace("W"+str(i), str(unislen_list[i]))
     #output=output.strip()
     print output
-    f=open("test.unis",'w')
+    f=open("lab01.unis",'w')
     f.write(output)
     return
 
