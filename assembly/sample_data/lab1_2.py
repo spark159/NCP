@@ -1,4 +1,9 @@
 import copy
+import matplotlib.pyplot as plt
+import networkx as nx
+
+# parameter
+read_len=250
 
 # read overlap information
 def read_input (fname):
@@ -84,7 +89,7 @@ def get_flow (web_info, ref=None):
         result[st]['out'][en]=pos
         result[en]['in'][st]=-pos
     return result
-                                                                                                                                           
+                                                                                                                                        
 # check edge reduction of closed triple node
 def check_redu (w3flow):
     a='NA'; b='NA'; c='NA'
@@ -102,8 +107,9 @@ def check_redu (w3flow):
         return (a,c)
     return False
 
-# pick one redundant edge 
-def pick_redge (web_info):
+# pick all redundant edge 
+def get_redges (web_info):
+    result=[]
     for node1 in web_info:
         if len(web_info[node1]) > 1:
             for i in range(len(web_info[node1])-1):
@@ -113,28 +119,24 @@ def pick_redge (web_info):
                         w3={node1:[node2,node3],node2:[node1,node3],node3:[node1,node2]}
                         w3flow=get_flow(w3)
                         edge=check_redu(w3flow)
-                        if edge:
-                            return edge
-    return None
+                        if edge and (not edge in result) and (not edge[::-1] in result):
+                            result.append(edge)
+    return result
                             
 # remove redundant edge connecting a pair of nodes
-def remove_edge(web_info,pair):
-    for i in range(len(pair)):
-        for j in range(len(web_info[pair[i]])):
-            if web_info[pair[i]][j] == pair[i-1]:
-                dpoint=j; break
-        del web_info[pair[i]][dpoint]
+def remove_edges (web_info,pair_list):
+    for pair in pair_list:
+        n1, n2 = pair
+        web_info[n1].remove(n2)
+        web_info[n2].remove(n1)
     return
                                
 # get reduced web by removing redundant edges
 def get_rweb (web_info):
     web=copy.deepcopy(web_info)
-    while True:
-        edge=pick_redge(web)
-        if not edge:
-           return web
-        remove_edge(web,edge)
-    return
+    edge_list=get_redges(web)
+    remove_edges(web,edge_list)
+    return web
 
 # remove nodes in the web
 def remove_nodes(web_info, node_list):
@@ -182,7 +184,7 @@ def follow_flow (web, st):
         ptflow, ptstrand=flow_pt(web,pt,strand)
         if not ptflow:
             return group, [pt]
-        if (len(ptflow[pt]['in']) + len(ptflow[pt]['out'])) > 2 and len(ptflow[pt]['in']) > 1:
+        if len(ptflow[pt]['in']) > 1:
             group=group[:-1]; break
         if len(ptflow[pt]['out'])==0 or len(ptflow[pt]['out']) > 1:
             break
@@ -194,7 +196,7 @@ def follow_flow (web, st):
     pt=copy.deepcopy(st); strand=1; rgroup=[]
     while True:
         ptflow, ptstrand=flow_pt(web,pt,strand)
-        if (len(ptflow[pt]['in']) + len(ptflow[pt]['out'])) > 2 and len(ptflow[pt]['out']) > 1:
+        if len(ptflow[pt]['out']) > 1:
             rgroup=rgroup[:-1]; break
         if len(ptflow[pt]['in'])==0 or len(ptflow[pt]['in']) > 1:
             break
@@ -229,9 +231,11 @@ def find_unis (olaps_info):
 
 # print out unitig list in the format
 def printout (unis_list):
-    output=''
+    global read_len
+    output=''; unislen_list=[]
     for i in range(len(unis_list)):
-        output += 'UNI  %02d    %d    %d \n' % (i+1, len(unis_list[i]), 1)
+        output += 'UNI  %02d    %d    %s \n' % (i+1, len(unis_list[i]),"W"+str(i) )
+        unislen=0
         for j in range(len(unis_list[i])):
             if j ==0:
                 num, strand, pos = unis_list[i][j]; mark='F'
@@ -243,14 +247,35 @@ def printout (unis_list):
             else:
                 nmark='R'
             if pos < 0:
-                ref = pos
+                loc = -pos
             else:
-                ref = 0
-            loc=npos-ref
+                loc = npos
+            unislen += loc
             output += '  %03d   %s   %d \n' % (nnum, nmark, loc)
             num=nnum; strand=nstrand; pos=npos
-    print output.strip()
+        unislen += read_len
+        unislen_list.append(unislen)
+        
+    for i in range(len(unislen_list)):
+        output=output.replace("W"+str(i), str(unislen_list[i]))
+    #output=output.strip()
+    print output
+    f=open("test.unis",'w')
+    f.write(output)
     return
+
+# draw graph
+def draw_graph(web):
+    sublaps=get_sublaps(web)
+    outcome=[]
+    for olaps in sublaps:
+        i,j,ori,pos=olaps
+        outcome.append((i,j))
+    G = nx.Graph()
+    G.add_edges_from(outcome)
+    nx.draw(G, node_size=400, with_labels=True)
+    plt.show()
+    
 
 unis_list=find_unis(olaps_info)
 printout(unis_list)
